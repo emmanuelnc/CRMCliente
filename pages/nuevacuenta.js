@@ -1,10 +1,57 @@
-import React from 'react';
+import React, {useState} from 'react';
 import Layout from '../components/Layout';
 import { useFormik } from 'formik';
+import { useRouter } from 'next/router'
 
 import * as Yup from 'yup'; // libreria para validar formilarios
 
+
+
+import { useMutation, gql } from '@apollo/client';
+import { route } from 'next/dist/next-server/server/router';
+
+
+const NUEVA_CUENTA = gql`
+mutation nuevoUsuario($input:UsuarioInput){
+    nuevoUsuario(input:$input){
+      id
+      nombre
+      apellido
+      email
+    }
+  }
+`;
+
+// //Probar query de graphQL
+// const QUERY = gql`
+// query obtenerProductos{
+//     obtenerProductos{
+//       nombre,
+//       precio,
+//       existencia,
+//       creado
+//     }
+//   }
+// `;
+
 const NuevaCuenta = () => {
+
+
+//state para el mensaje
+const [mensaje, guardarMensaje] = useState(null);
+
+
+const [nuevoUsuario] = useMutation(NUEVA_CUENTA); //retorna la funcion,  como array destructirung
+
+    
+//Routing
+const router = useRouter();
+
+
+// obtener productos de graphQL
+// const {data, loading, errors  } = useQuery(QUERY);
+// console.log(data);
+
 
 
     //Validacion de formulario
@@ -28,16 +75,69 @@ const NuevaCuenta = () => {
                         .required('El password no puede ir vacio')
                         .min(6,'La longitud minima es de 6 caracteres')
         }),
-        onSubmit: valores => {
-            console.log('enviando');
-            console.log(valores);
+        onSubmit: async valores => {
+          //  console.log('enviando');
+            //console.log(valores);
+
+            const { nombre, apellido, email, password } = valores
+
+            try {
+               const {data} =   await nuevoUsuario({
+                     variables : {
+                         input:{
+                             nombre,
+                             apellido,
+                             email,
+                             password
+                         }
+                     }
+
+                 });
+                 
+                 console.log(data);
+                 //usuario creado correctamente
+                 guardarMensaje(`Se creo correctamente el usuario ${data.nuevoUsuario.nombre} `);
+
+
+                 setTimeout(()=> {
+                     guardarMensaje(null);
+                     router.push('/login');
+                 },4000)
+
+                 
+                 // redireccionar
+                
+            } catch (error) {
+                guardarMensaje(error.message);
+                //console.log(error.message);
+             
+                
+                setTimeout(() => {
+                    guardarMensaje(null)
+                }, 3000);
+
+            }
+
+
         }
-    })
+    });
+
+    const mostrarMensaje = () => {
+        return (
+<div className="bg-white py-2 px-3 w-full my-3 max-w-sm text-center mx-auto colo">
+    <p>
+        {mensaje}
+    </p>
+</div>
+        )
+    }
 
 
     return (
         <>
             <Layout>
+{mensaje && mostrarMensaje ()}
+
                 <h1 className="text-center text-2xl text-white font-light">Crear Nueva Cuenta</h1>
                 <div className="flex justify-center mt-5">
                     <div className="w-full max-w-sm">
@@ -127,7 +227,7 @@ const NuevaCuenta = () => {
                                     <input 
                                         className = "shadow apperance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring focus:border-blue-300"
                                         id="password" 
-                                        type="email" 
+                                        type="password" 
                                         placeholder="password" 
                                         value = { formik.values.password }
                                         onChange = { formik.handleChange } 
